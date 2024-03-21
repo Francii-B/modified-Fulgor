@@ -82,6 +82,15 @@ struct permuter {
 
             const uint64_t num_docs = index.num_docs();
 
+            //MODIFICATION: print the clusters
+            std::ofstream clusters_out(m_build_config.tmp_dirname + "/kmeans_clusters.tsv");
+            assert(clustering_data.clusters.size() == num_docs);
+            for (uint64_t i = 0; i != num_docs; ++i) {
+                clusters_out << index.filename(i) << "\t"
+                             << i << "\t"
+                             << clustering_data.clusters[i] << endl;
+            }
+
             /* build permutation */
             auto counts = m_partition_size;  // copy
             m_permutation.resize(num_docs);
