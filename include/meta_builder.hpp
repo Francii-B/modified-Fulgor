@@ -221,8 +221,6 @@ struct index<ColorClasses>::meta_builder {
         std::string path= "./external_clusters/custom_clusters.tsv";
         std::filesystem::exists(path)  ? p.permute_custom(index, path) : p.permute(index);
 
-        //test
-
 
         auto const& permutation = p.permutation();
 
