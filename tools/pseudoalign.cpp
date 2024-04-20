@@ -44,8 +44,12 @@ template <typename FulgorIndex>
 int do_map(FulgorIndex const& index, fastx_parser::FastxParser<fastx_parser::ReadSeq>& rparser,
            std::atomic<uint64_t>& num_reads, std::atomic<uint64_t>& num_mapped_reads,
            pseudoalignment_algorithm algo, const double threshold, std::ofstream& out_file,
-           std::mutex& iomut, std::mutex& ofile_mut) {
-    std::vector<uint32_t> colors;  // result of pseudo-alignment
+           std::mutex& iomut, std::mutex& ofile_mut, bool best_hits, bool tsv) { //modification
+
+    std::vector<uint32_t> colors; // result of pseudo-alignment
+    //modification: alternative structure if tsv flag is true
+    std::vector<std::vector<uint32_t>> colorss;
+
     std::stringstream ss;
     uint64_t buff_size = 0;
     constexpr uint64_t buff_thresh = 50;
@@ -134,19 +138,46 @@ int do_map(FulgorIndex const& index, fastx_parser::FastxParser<fastx_parser::Rea
                         index.pseudoalign_full_intersection(record.seq, colors);
                         break;
                     case pseudoalignment_algorithm::THRESHOLD_UNION:
-                        index.pseudoalign_threshold_union(record.seq, colors, threshold);
+                        //modification: if tsv is given, then proceed w/ classic query, else obtain classic output but evaluate whether best-hits or classic
+                        if (tsv){
+                            index.pseudoalign_threshold_union(record.seq, colorss, threshold); //modification
+                        } else {
+                            index.pseudoalign_threshold_union(record.seq, colors, threshold, best_hits); //modification
+                        }
                         break;
                     default:
                         break;
                 }
                 buff_size += 1;
-                if (!colors.empty()) {
-                    num_mapped_reads += 1;
-                    ss << record.name << "\t" << colors.size();
-                    for (auto c : colors) { ss << "\t" << c; }
-                    ss << "\n";
-                } else {
-                    ss << record.name << "\t0\n";
+                // modification: option for tsv (classic thr. union)
+                if (tsv){
+                    if (!colorss.empty()) {
+                        num_mapped_reads += 1;
+                        for (auto c : colorss){
+                            ss << record.name << "\t" << index.filename(c[0]) << "\t" << c[1] << "\n"; } //modification: query, filenames, #shared kmers
+                    } else {
+                        ss << record.name << "\t\tNA\tNA\n";
+                    }
+                // modification: option for best-hits
+                } else if (best_hits){
+                    if (!colors.empty()) {
+                        num_mapped_reads += 1;
+                        ss << record.name << "\t" << *(colors.begin()) << "\t" <<(colors.size() - 1) << "\t"; //modification: read, #shared kmers, #genomes
+                        colors.erase(colors.begin()); //modification: remove the best score
+                        for (auto c : colors) { ss <<  index.filename(c) << ", "; } //modification: filenames instead colorID
+                        ss << "\n";
+                    } else {
+                        ss << record.name << "\tNA\tNA\tNA,\n";
+                    }
+                } else{
+                    if (!colors.empty()) {
+                        num_mapped_reads += 1;
+                        ss << record.name << "\t" << colors.size();
+                        for (auto c : colors) { ss << "\t" << c; }
+                        ss << "\n";
+                    } else {
+                        ss << record.name << "\t0\n";
+                    }
                 }
                 num_reads += 1;
                 colors.clear();
@@ -183,7 +214,7 @@ int do_map(FulgorIndex const& index, fastx_parser::FastxParser<fastx_parser::Rea
 template <typename FulgorIndex>
 int pseudoalign(std::string const& index_filename, std::string const& query_filename,
                 std::string const& output_filename, uint64_t num_threads, double threshold,
-                pseudoalignment_algorithm algo) {
+                pseudoalignment_algorithm algo, bool best_hits, bool tsv) { //modification
     FulgorIndex index;
     essentials::logger("loading index from disk...");
     essentials::load(index, index_filename.c_str());
@@ -193,9 +224,17 @@ int pseudoalign(std::string const& index_filename, std::string const& query_file
     if ((algo == pseudoalignment_algorithm::FULL_INTERSECTION) and
         (threshold != constants::invalid_threshold)) {
         algo = pseudoalignment_algorithm::THRESHOLD_UNION;
+    } else { //modification: tsv and best_hits are only for threshold union
+        best_hits = false;
+        tsv = false;
+        std::cerr << "Warning: --best-hits and --tsv were deactivate because they are specific for threshold union.\n";
     }
 
     std::cerr << "query mode : " << to_string(algo, threshold) << "\n";
+    if (best_hits) {
+        std::cerr << "output type : best hits\n";  // mofification
+        tsv = false; // modification:  priority best-hits > tsv, bc not compatible
+    } else if (tsv) std::cerr << "output format : tsv\n"; //mofification
 
     if (((algo == pseudoalignment_algorithm::SKIPPING) or
          (algo == pseudoalignment_algorithm::SKIPPING_KALLISTO)) and
@@ -240,9 +279,9 @@ int pseudoalign(std::string const& index_filename, std::string const& query_file
 
     for (uint64_t i = 1; i != num_threads; ++i) {
         workers.push_back(std::thread([&index, &rparser, &num_reads, &num_mapped_reads, algo,
-                                       threshold, &out_file, &iomut, &ofile_mut]() {
+                                       threshold, &out_file, &iomut, &ofile_mut, best_hits, tsv]() { //modification
             do_map(index, rparser, num_reads, num_mapped_reads, algo, threshold, out_file, iomut,
-                   ofile_mut);
+                   ofile_mut, best_hits, tsv); //modification
         }));
     }
 
@@ -270,6 +309,8 @@ int pseudoalign(int argc, char** argv) {
     uint64_t num_threads = 1;
     double threshold = constants::invalid_threshold;
     pseudoalignment_algorithm algo = pseudoalignment_algorithm::FULL_INTERSECTION;
+    bool best_hits{false}; //modification
+    bool tsv{false}; //modification
 
     CLI::App app{"Perform (color-only) pseudoalignment to a Fulgor index."};
     app.add_option("-i,--index", index_filename, "The Fulgor index filename,")
@@ -291,6 +332,14 @@ int pseudoalign(int argc, char** argv) {
            [&algo]() { algo = pseudoalignment_algorithm::SKIPPING_KALLISTO; },
            "Enable the kallisto skipping heuristic in pseudoalignment.")
         ->excludes(skip_opt);
+    app.add_flag(
+           "--best_hits",
+           best_hits,
+           "Output the best hits for each query.");
+    app.add_flag(
+        "--tsv",
+        tsv,
+        "Print the output as tsv (only union-threshold, classic version). Not compatible with --best-hits. This last will have the priority in case of both flags.");
     CLI11_PARSE(app, argc, argv);
 
     util::print_cmd(argc, argv);
@@ -298,10 +347,10 @@ int pseudoalign(int argc, char** argv) {
     if (sshash::util::ends_with(index_filename,
                                 constants::meta_colored_fulgor_filename_extension)) {
         return pseudoalign<meta_index_type>(index_filename, query_filename, output_filename,
-                                            num_threads, threshold, algo);
+                                            num_threads, threshold, algo, best_hits, tsv);
     } else if (sshash::util::ends_with(index_filename, constants::fulgor_filename_extension)) {
         return pseudoalign<index_type>(index_filename, query_filename, output_filename, num_threads,
-                                       threshold, algo);
+                                       threshold, algo, best_hits, tsv);
     }
 
     std::cerr << "Wrong filename supplied." << std::endl;
