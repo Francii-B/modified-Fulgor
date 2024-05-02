@@ -149,7 +149,6 @@ int do_map(FulgorIndex const& index, fastx_parser::FastxParser<fastx_parser::Rea
                         break;
                 }
                 buff_size += 1;
-                const uint64_t num_kmers = record.seq.length() - index.k() + 1; //modification: count # of kmers inside the query
                 // modification: option for tsv (classic thr. union)
                 if (tsv){
                     if (!colorss.empty()) {
@@ -163,12 +162,12 @@ int do_map(FulgorIndex const& index, fastx_parser::FastxParser<fastx_parser::Rea
                 } else if (best_hits){
                     if (!colors.empty()) {
                         num_mapped_reads += 1;
-                        ss << record.name << "\t" << *(colors.begin()) << "\t" <<num_kmers << "\t"; //modification: read, #shared kmers, query kmers
+                        ss << record.name << "\t" << *(colors.begin()) << "\t" <<(colors.size() - 1) << "\t"; //modification: read, #shared kmers, #genomes
                         colors.erase(colors.begin()); //modification: remove the best score
                         for (auto c : colors) { ss <<  index.filename(c) << ", "; } //modification: filenames instead colorID
                         ss << "\n";
                     } else {
-                        ss << record.name << "\tNA\t" <<num_kmers << "\tNA\n";
+                        ss << record.name << "\tNA\tNA\tNA,\n";
                     }
                 } else{
                     if (!colors.empty()) {
