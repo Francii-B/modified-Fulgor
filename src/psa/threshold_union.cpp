@@ -72,6 +72,13 @@ void merge_tsv(std::vector<Iterator>& iterators, std::vector<std::vector<uint32_
         assert(next_candidate > candidate);
         candidate = next_candidate;
     }
+
+    //modification: sort colors vector by score, decreasing order
+    std::sort(colors.begin(), colors.end(), [](const std::vector<uint32_t>& x, const std::vector<uint32_t>& y) {
+        return x[1] > y[1];
+    });
+
+
 }
 
 
