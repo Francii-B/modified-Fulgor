@@ -156,7 +156,7 @@ int do_map(FulgorIndex const& index, fastx_parser::FastxParser<fastx_parser::Rea
                         for (auto c : colorss){
                             ss << record.name << "\t" << index.filename(c[0]) << "\t" << c[1] << "\n"; } //modification: query, filenames, #shared kmers
                     } else {
-                        ss << record.name << "\t\tNA\tNA\n";
+                        ss << record.name << "\tNA\tNA\n";
                     }
                 // modification: option for best-hits
                 } else if (best_hits){
