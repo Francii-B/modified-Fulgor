@@ -151,13 +151,23 @@ int do_map(FulgorIndex const& index, fastx_parser::FastxParser<fastx_parser::Rea
                 buff_size += 1;
                 // modification: option for tsv (classic thr. union)
                 if (tsv){
-                    if (!colorss.empty()) {
+/*
+                   if (!colorss.empty()) {
                         num_mapped_reads += 1;
                         for (auto c : colorss){
                             ss << record.name << "\t" << index.filename(c[0]) << "\t" << c[1] << "\n"; } //modification: query, filenames, #shared kmers
                     } else {
                         ss << record.name << "\tNA\tNA\n";
                     }
+*/
+                    ss <<"*" << record.name << "\t" << colorss.size() << "\n";
+                    if (!colorss.empty()) { //temporary modification: COBS-like output format
+                        std::string fname;
+                        for (auto c : colorss){
+                            fname = std::filesystem::path(index.filename(c[0])).stem().string();
+                            ss << "_" << fname << "\t" << c[1] << "\n"; }
+                    }
+
                 // modification: option for best-hits
                 } else if (best_hits){
                     if (!colors.empty()) {
