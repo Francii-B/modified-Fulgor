@@ -82,6 +82,15 @@ struct permuter {
 
             const uint64_t num_colors = index.num_colors();
 
+            //MODIFICATION: print the clusters
+            std::ofstream clusters_out(m_build_config.tmp_dirname + "/kmeans_clusters.tsv");
+            assert(clustering_data.clusters.size() == num_docs);
+            for (uint64_t i = 0; i != num_docs; ++i) {
+                clusters_out << index.filename(i) << "\t"
+                             << i << "\t"
+                             << clustering_data.clusters[i] << endl;
+            }
+
             /* build permutation */
             auto counts = m_partition_size;  // copy
             m_permutation.resize(num_colors);
@@ -100,6 +109,71 @@ struct permuter {
         }
     }
 
+    //MODIFICATION: function dedicated to external reordering
+    void permute_custom(index_type const& index, std::string const& path) {
+
+        const uint64_t num_docs = index.num_docs(); 
+        sorting_array.resize(num_docs);	
+        m_custom_clusters.resize(num_docs);
+
+
+        essentials::logger("step 2. import the custom clusters");
+        std::ifstream in(path);
+
+        std::string fname;
+        uint64_t fulgor_id, cluster_id, pos = 0;
+
+        while (in >> fname >> fulgor_id >> cluster_id){
+            //check fname correspondence
+            if (index.filename(fulgor_id) != fname) throw std::runtime_error("no correspondence between filenames");
+
+            //count n of clusters
+            if (m_num_partitions < cluster_id) m_num_partitions = cluster_id;
+
+            sorting_array[pos] = fulgor_id;
+            m_custom_clusters[pos] = cluster_id;
+
+            pos += 1;
+        }
+        m_num_partitions += 1;
+
+        essentials::logger("step 3. permutation based on the external file");
+        //copy-pasted from the original function
+        m_partition_size.resize(m_num_partitions + 1, 0);
+        for (auto c : m_custom_clusters) m_partition_size[c] += 1; //correction
+
+        /* take prefix sums */
+        uint64_t val = 0;
+        for (auto& size : m_partition_size) {
+            if (size > m_max_partition_size) m_max_partition_size = size;
+            uint64_t tmp = size;
+            size = val;
+            val += tmp;
+        }
+
+        /* build permutation */
+        auto counts = m_partition_size;  // copy
+        m_permutation.resize(num_docs);
+        assert(m_custom_clusters.size() == num_docs); //correction
+
+        //MODIFICATION: partition + reordering based on sorting_array order
+        for (uint64_t i = 0; i != num_docs; ++i) {
+            uint32_t index_id = sorting_array[i];
+            uint32_t cluster_id = m_custom_clusters[i];
+            uint32_t novel_id = counts[cluster_id];
+            m_permutation[index_id] = novel_id;
+            counts[cluster_id] += 1;
+
+        }
+
+        /* permute filenames */
+        m_filenames.resize(num_docs);
+        for (uint64_t i = 0; i != num_docs; ++i) {
+            m_filenames[m_permutation[i]] = index.filename(i);
+        }
+
+    }
+
     partition_endpoint partition_endpoints(uint64_t partition_id) const {
         assert(partition_id + 1 < m_partition_size.size());
         return {m_partition_size[partition_id], m_partition_size[partition_id + 1]};
@@ -115,6 +189,8 @@ private:
     build_configuration m_build_config;
     uint64_t m_num_partitions;
     uint64_t m_max_partition_size;
+    std::vector<uint32_t> m_custom_clusters; //MODIFICATION: replace clustering_data.clusters
+    std::vector<uint32_t> sorting_array; //MODIFICATION: array storing the IDs. Define the final ordering inside the partition
     std::vector<uint32_t> m_permutation;
     std::vector<uint32_t> m_partition_size;
     std::vector<std::string> m_filenames;
@@ -140,7 +216,12 @@ struct index<ColorSets>::meta_builder {
         essentials::timer<std::chrono::high_resolution_clock, std::chrono::seconds> timer;
 
         permuter p(m_build_config);
-        p.permute(index);
+        
+        //MODIFICATION: if the custom_clusters file exists, use its content for the permutation process
+        std::string path= "./external_clusters/custom_clusters.tsv";
+        std::filesystem::exists(path)  ? p.permute_custom(index, path) : p.permute(index);
+
+
         auto const& permutation = p.permutation();
 
         const uint64_t num_partitions = p.num_partitions();
