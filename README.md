@@ -1,14 +1,15 @@
 Fulgor
 ======
 
-Fulgor is a *(meta-) colored compacted de Bruijn graph* index for large-scale matching and color queries, powered by [SSHash](https://github.com/jermp/sshash) and [GGCAT](https://github.com/algbio/GGCAT).
+Fulgor is a *colored de Bruijn graph* index for large-scale matching and color queries, powered by [SSHash](https://github.com/jermp/sshash) and [GGCAT](https://github.com/algbio/GGCAT).
 
 The Fulgor index is described in the following papers:
 
-- [**Fulgor: A Fast and Compact k-mer Index for Large-Scale Matching and Color Queries**](https://almob.biomedcentral.com/articles/10.1186/s13015-024-00251-9) (Algorithms for Molecular Biology, ALMOB 2024):
-<!--	- [WABI 2023 version](https://drops.dagstuhl.de/opus/volltexte/2023/18644/)-->
+- [**Fulgor: A Fast and Compact k-mer Index for Large-Scale Matching and Color Queries**](https://almob.biomedcentral.com/articles/10.1186/s13015-024-00251-9) (Algorithms for Molecular Biology, ALMOB 2024), and
 
-- [**Meta-colored compacted de Bruijn graphs**](https://www.biorxiv.org/content/10.1101/2023.07.21.550101v2.full.pdf) (International Conference on Research in Computational Molecular Biology, RECOMB 2024).
+- [**Meta-colored compacted de Bruijn graphs**](https://link.springer.com/chapter/10.1007/978-1-0716-3989-4_9) (International Conference on Research in Computational Molecular Biology, RECOMB 2024).
+
+- [**Where the patters are: repetition-aware compression for colored de Bruijn graphs**](https://jermp.github.io/assets/pdf/papers/JCB2024.pdf) (Journal of Computational Biology, JCB 2024). To appear.
 
 Please, cite these papers if you use Fulgor.
 
@@ -19,6 +20,7 @@ Please, cite these papers if you use Fulgor.
 * [Quick start](#quick-start)
 * [Indexing an example Salmonella pangenome](#indexing-an-example-salmonella-pangenome)
 * [Pseudoalignment output format](#pseudoalignment-output-format)
+
 
 Dependencies
 ------------
@@ -80,7 +82,7 @@ Tools and usage
 There is one executable called `fulgor` after the compilation, which can be used to run a tool.
 Run `./fulgor` to see a list of available tools.
 
-	== Fulgor: a (meta-) colored compacted de Bruijn graph index =============================
+	== Fulgor: a colored de Bruijn graph index ================================
 
 	Usage: ./fulgor <tool> ...
 
@@ -91,12 +93,14 @@ Run `./fulgor` to see a list of available tools.
 	  print-filenames    print all reference filenames
 
 	Advanced tools:
-	  partition          partition a Fulgor index and build a meta-colored Fulgor index
-	  dump-colors        write colors to an output file in text format
+	  permute            permute the reference names of a Fulgor index
+	  dump               write unitigs and color sets in text format
+	  color              build a meta- or a diff- or a meta-diff- Fulgor index
 
 For large-scale indexing, it could be necessary to increase the number of file descriptors that can be opened simultaneously:
 
 	ulimit -n 2048
+
 
 Quick start
 -----------
@@ -154,10 +158,23 @@ using 8 parallel threads and writing the mapping output to `/dev/null`.
 
 To partition the index to obtain a meta-colored Fulgor index, then do:
 
-	./fulgor partition -i ~/Salmonella_enterica/salmonella_4546.fur -d tmp_dir --check
+	./fulgor color -i ~/Salmonella_enterica/salmonella_4546.fur -d tmp_dir --meta --check
 
-The meta-colored index will be serialized to the file `~/Salmonella_enterica/salmonella_4546.mfur`
-and will take 0.104 GB (2.55X smaller than the `.fur` index).
+We can change the option `--meta` to `--diff` to create a differential-colored index, or use
+both options, `--meta --diff`, to create a meta-differential-colored index.
+See the table below.
+
+| command               | output file             | size (GB) | compression factor |
+|:----------------------|:------------------------|:---------:|:------------------:|
+| `color --meta`        | `salmonella_4546.mfur`  | 0.11769   | 2.26               |
+| `color --diff`        | `salmonella_4546.dfur`  | 0.11076   | 2.40               |
+| `color --meta --diff` | `salmonella_4546.mdfur` | 0.09389   | 2.84               |
+
+
+The following table is taken from the paper *"Where the patters are: repetition-aware compression for colored de Bruijn graphs"* and shows the size of the various Fulgor indexes on several larger pangenomes.
+
+![Index size](./fulgor_index_size.png)
+
 
 Pseudoalignment output format
 -----------------------------
@@ -182,7 +199,8 @@ where `[list]` is a TAB-separated list of increasing integers, of length `[list-
 
 #### Important note
 
-If pseudoalignment is performed against a **meta-colored** Fulgor index,
+If pseudoalignment is performed against a **meta-colored**
+or a **differential-meta-colored** Fulgor index,
 the reference identifiers in the pseudoalignment output might **not** correspond to the ones assigned following the input-file order as specified with option `-l` during index construction.
 This is because the meta-colored index re-assignes identifiers to references to improve index compression.
 

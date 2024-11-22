@@ -2,17 +2,33 @@
 #include <fstream>
 #include <sstream>
 
-#include "../external/CLI11.hpp"
-#include "../external/sshash/include/gz/zip_stream.hpp"
-#include "../external/FQFeeder/include/FastxParser.hpp"
-#include "../external/FQFeeder/src/FastxParser.cpp"
+#include "external/CLI11.hpp"
+#include "external/sshash/include/gz/zip_stream.hpp"
+#include "external/FQFeeder/include/FastxParser.hpp"
+#include "external/FQFeeder/src/FastxParser.cpp"
 
-#include "../piscem_psa/hit_searcher.cpp"
-#include "../kallisto_psa/psa.cpp"
-#include "../src/psa/full_intersection.cpp"
-#include "../src/psa/threshold_union.cpp"
+#include "piscem_psa/hit_searcher.cpp"
+#include "kallisto_psa/psa.cpp"
+#include "src/psa/full_intersection.cpp"
+#include "src/psa/threshold_union.cpp"
 
 using namespace fulgor;
+
+// See https://github.com/jermp/experiments/tree/master/bin_to_char_conversion.
+// void write_output(std::vector<uint32_t> const& vec, std::ostream& os) {
+//     static char buffer[32];
+//     for (uint32_t x : vec) {
+//         int len = 1;
+//         do {
+//             buffer[len++] = '0' + (x % 10);
+//             x /= 10;
+//         } while (x > 0);
+//         std::reverse(buffer + 1, buffer + len);
+//         buffer[0] = '\t';
+//         os.write(buffer, len);
+//     }
+//     os << '\n';
+// }
 
 enum class pseudoalignment_algorithm : uint8_t {
     FULL_INTERSECTION,
@@ -57,14 +73,14 @@ int do_map(FulgorIndex const& index, fastx_parser::FastxParser<fastx_parser::Rea
     if ((algo == pseudoalignment_algorithm::SKIPPING or
          algo == pseudoalignment_algorithm::SKIPPING_KALLISTO) and
         (index.get_k2u().canonicalized())) {
-        std::vector<uint32_t> unitig_ids;                           // for use with skipping
+        std::vector<uint64_t> unitig_ids;                           // for use with skipping
         std::vector<std::pair<projected_hits, int>> kallisto_hits;  // for use with kallisto psa
 
         piscem_psa::hit_searcher<FulgorIndex> hs(&index);
         sshash::streaming_query_canonical_parsing qc(&index.get_k2u());
 
         auto get_hits_piscem_psa = [&qc, &hs](const std::string& seq,
-                                              std::vector<uint32_t>& unitig_ids) -> void {
+                                              std::vector<uint64_t>& unitig_ids) -> void {
             hs.clear();
             auto had_hits = hs.get_raw_hits_sketch(seq, qc, true, false);
             if (had_hits) {
@@ -76,7 +92,7 @@ int do_map(FulgorIndex const& index, fastx_parser::FastxParser<fastx_parser::Rea
 
         auto get_hits_kallisto_psa = [&index, &kallisto_hits](
                                          const std::string& seq,
-                                         std::vector<uint32_t>& unitig_ids) -> void {
+                                         std::vector<uint64_t>& unitig_ids) -> void {
             kallisto_hits.clear();
             match(seq, seq.length(), &index, kallisto_hits);
             if (!kallisto_hits.empty()) {
@@ -104,9 +120,10 @@ int do_map(FulgorIndex const& index, fastx_parser::FastxParser<fastx_parser::Rea
                 index.intersect_unitigs(unitig_ids, colors);
                 if (!colors.empty()) {
                     num_mapped_reads += 1;
-                    ss << record.name << "\t" << colors.size();
+                    ss << record.name << '\t' << colors.size() << '\t';
                     for (auto c : colors) { ss << "\t" << c; }
-                    ss << "\n";
+                    ss << '\n';
+                    // write_output(colors, ss);
                 } else {
                     ss << record.name << "\t0\n";
                 }
@@ -182,9 +199,10 @@ int do_map(FulgorIndex const& index, fastx_parser::FastxParser<fastx_parser::Rea
                 } else{
                     if (!colors.empty()) {
                         num_mapped_reads += 1;
-                        ss << record.name << "\t" << colors.size();
+                        ss << record.name << '\t' << colors.size();
                         for (auto c : colors) { ss << "\t" << c; }
-                        ss << "\n";
+                        ss << '\n';
+                        // write_output(colors, ss);
                     } else {
                         ss << record.name << "\t0\n";
                     }
@@ -224,11 +242,11 @@ int do_map(FulgorIndex const& index, fastx_parser::FastxParser<fastx_parser::Rea
 template <typename FulgorIndex>
 int pseudoalign(std::string const& index_filename, std::string const& query_filename,
                 std::string const& output_filename, uint64_t num_threads, double threshold,
-                pseudoalignment_algorithm algo, bool best_hits, bool tsv) { //modification
+                pseudoalignment_algorithm algo, const bool quiet, bool best_hits, bool tsv) { //modification
     FulgorIndex index;
-    essentials::logger("loading index from disk...");
+    if (!quiet) essentials::logger("loading index from disk...");
     essentials::load(index, index_filename.c_str());
-    essentials::logger("DONE");
+    if (!quiet) essentials::logger("DONE");
 
     // if not a skipping variant and no threshold set, then set the algorithm
     if ((algo == pseudoalignment_algorithm::FULL_INTERSECTION) and
@@ -249,7 +267,7 @@ int pseudoalign(std::string const& index_filename, std::string const& query_file
     if (((algo == pseudoalignment_algorithm::SKIPPING) or
          (algo == pseudoalignment_algorithm::SKIPPING_KALLISTO)) and
         !(index.get_k2u().canonicalized())) {
-        std::cout << "==> Warning: skipping is only supported for canonicalized indexes. <=="
+        std::cerr << "==> Warning: skipping is only supported for canonicalized indexes. <=="
                   << std::endl;
     }
 
@@ -259,7 +277,7 @@ int pseudoalign(std::string const& index_filename, std::string const& query_file
         return 1;
     }
 
-    essentials::logger("performing queries from file '" + query_filename + "'...");
+    if (!quiet) essentials::logger("performing queries from file '" + query_filename + "'...");
     essentials::timer<std::chrono::high_resolution_clock, std::chrono::milliseconds> t;
     t.start();
 
@@ -269,8 +287,9 @@ int pseudoalign(std::string const& index_filename, std::string const& query_file
     auto query_filenames = std::vector<std::string>({query_filename});
     if (num_threads == 1) {
         num_threads += 1;
-        essentials::logger(
-            "1 thread was specified, but an additional thread will be allocated for parsing");
+        std::cerr
+            << "1 thread was specified, but an additional thread will be allocated for parsing"
+            << std::endl;
     }
     fastx_parser::FastxParser<fastx_parser::ReadSeq> rparser(query_filenames, num_threads,
                                                              num_threads - 1);
@@ -283,7 +302,7 @@ int pseudoalign(std::string const& index_filename, std::string const& query_file
     std::ofstream out_file;
     out_file.open(output_filename, std::ios::out | std::ios::trunc);
     if (!out_file) {
-        essentials::logger("could not open output file " + output_filename);
+        std::cerr << "could not open output file " + output_filename << std::endl;
         return 1;
     }
 
@@ -299,26 +318,30 @@ int pseudoalign(std::string const& index_filename, std::string const& query_file
     rparser.stop();
 
     t.stop();
-    essentials::logger("DONE");
+    if (!quiet) essentials::logger("DONE");
 
-    std::cout << "mapped " << num_reads << " reads" << std::endl;
-    std::cout << "elapsed = " << t.elapsed() << " millisec / ";
-    std::cout << t.elapsed() / 1000 << " sec / ";
-    std::cout << t.elapsed() / 1000 / 60 << " min / ";
-    std::cout << (t.elapsed() * 1000) / num_reads << " musec/read" << std::endl;
-    std::cout << "num_mapped_reads " << num_mapped_reads << "/" << num_reads << " ("
-              << (num_mapped_reads * 100.0) / num_reads << "%)" << std::endl;
+    if (!quiet) {
+        std::cout << "mapped " << num_reads << " reads" << std::endl;
+        std::cout << "elapsed = " << t.elapsed() << " millisec / ";
+        std::cout << t.elapsed() / 1000 << " sec / ";
+        std::cout << t.elapsed() / 1000 / 60 << " min / ";
+        std::cout << (t.elapsed() * 1000) / num_reads << " musec/read" << std::endl;
+        std::cout << "num_mapped_reads " << num_mapped_reads << "/" << num_reads << " ("
+                  << (num_mapped_reads * 100.0) / num_reads << "%)" << std::endl;
+    }
 
     return 0;
 }
 
 int pseudoalign(int argc, char** argv) {
+    /* params */
     std::string index_filename;
     std::string query_filename;
     std::string output_filename;
     uint64_t num_threads = 1;
     double threshold = constants::invalid_threshold;
     pseudoalignment_algorithm algo = pseudoalignment_algorithm::FULL_INTERSECTION;
+    bool quiet = false;
     bool best_hits{false}; //modification
     bool tsv{false}; //modification
 
@@ -329,7 +352,10 @@ int pseudoalign(int argc, char** argv) {
     app.add_option("-q,--query", query_filename,
                    "Query filename in FASTA/FASTQ format (optionally gzipped).")
         ->required();
-    app.add_option("-o,--output", output_filename, "File where output will be written.")
+    app.add_option("-o,--output", output_filename,
+                   "File where output will be written. You can specify \"/dev/stdout\" to write "
+                   "output to stdout. In this case, it is also recommended to use the --quiet flag "
+                   "to avoid printing status messages to stdout.")
         ->required();
     app.add_option("-t,--threads", num_threads, "Number of threads.")->default_val(1);
     app.add_option("--threshold", threshold, "Threshold for threshold_union algorithm.")
@@ -342,6 +368,7 @@ int pseudoalign(int argc, char** argv) {
            [&algo]() { algo = pseudoalignment_algorithm::SKIPPING_KALLISTO; },
            "Enable the kallisto skipping heuristic in pseudoalignment.")
         ->excludes(skip_opt);
+    app.add_flag("--quiet", quiet, "Quiet mode: do not print status messages to stdout.");
     app.add_flag(
            "--best_hits",
            best_hits,
@@ -352,15 +379,24 @@ int pseudoalign(int argc, char** argv) {
         "Print the output as tsv (only union-threshold, classic version). Not compatible with --best-hits. This last will have the priority in case of both flags.");
     CLI11_PARSE(app, argc, argv);
 
-    util::print_cmd(argc, argv);
+    if (!quiet) util::print_cmd(argc, argv);
 
     if (sshash::util::ends_with(index_filename,
-                                constants::meta_colored_fulgor_filename_extension)) {
+                                constants::meta_diff_colored_fulgor_filename_extension)) {
+        return pseudoalign<meta_differential_index_type>(
+            index_filename, query_filename, output_filename, num_threads, threshold, algo, quiet);
+    } else if (sshash::util::ends_with(index_filename,
+                                       constants::meta_colored_fulgor_filename_extension)) {
         return pseudoalign<meta_index_type>(index_filename, query_filename, output_filename,
-                                            num_threads, threshold, algo, best_hits, tsv);
-    } else if (sshash::util::ends_with(index_filename, constants::fulgor_filename_extension)) {
+                                            num_threads, threshold, algo, quiet, best_hits, tsv);
+    } else if (sshash::util::ends_with(index_filename,
+                                       constants::diff_colored_fulgor_filename_extension)) {
+        return pseudoalign<differential_index_type>(index_filename, query_filename, output_filename,
+                                                    num_threads, threshold, algo, quiet, best_hits, tsv);
+    } else if (sshash::util::ends_with(index_filename,
+                                       constants::fulgor_filename_extension)) {
         return pseudoalign<index_type>(index_filename, query_filename, output_filename, num_threads,
-                                       threshold, algo, best_hits, tsv);
+                                       threshold, algo, quiet, best_hits, tsv);
     }
 
     std::cerr << "Wrong filename supplied." << std::endl;

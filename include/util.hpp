@@ -8,12 +8,12 @@
 #include <chrono>
 #include <algorithm>  // for std::set_intersection
 
-#include "../external/smhasher/src/City.h"
-#include "../external/smhasher/src/City.cpp"
+#include "external/smhasher/src/City.h"
+#include "external/smhasher/src/City.cpp"
 
 namespace fulgor {
 
-enum list_type { delta_gaps = 0, bitmap = 1, complement_delta_gaps = 2 };
+enum list_type { delta_gaps, bitmap, complement_delta_gaps, differential_list };
 
 namespace constants {
 constexpr double invalid_threshold = -1.0;
@@ -21,6 +21,8 @@ constexpr uint64_t default_ram_limit_in_GiB = 8;
 static const std::string default_tmp_dirname(".");
 static const std::string fulgor_filename_extension("fur");
 static const std::string meta_colored_fulgor_filename_extension("mfur");
+static const std::string diff_colored_fulgor_filename_extension("dfur");
+static const std::string meta_diff_colored_fulgor_filename_extension("mdfur");
 }  // namespace constants
 
 struct build_configuration {
@@ -29,17 +31,22 @@ struct build_configuration {
         , m(20)
         , num_threads(1)
         , ram_limit_in_GiB(constants::default_ram_limit_in_GiB)
-        , num_docs(0)
+        , num_colors(0)
         , tmp_dirname(constants::default_tmp_dirname)
+        //
         , verbose(false)
         , canonical_parsing(true)
-        , check(false) {}
+        , check(false)
+        //
+        , meta_colored(false)
+        , diff_colored(false)  //
+    {}
 
     uint32_t k;            // kmer length
     uint32_t m;            // minimizer length
     uint32_t num_threads;  // for building and checking correctness
     uint32_t ram_limit_in_GiB;
-    uint64_t num_docs;
+    uint64_t num_colors;
 
     std::string tmp_dirname;
     std::string file_base_name;
@@ -50,6 +57,9 @@ struct build_configuration {
     bool verbose;
     bool canonical_parsing;
     bool check;
+
+    bool meta_colored;
+    bool diff_colored;
 };
 
 namespace util {
@@ -68,12 +78,12 @@ bool check_intersection(std::vector<ForwardIterator>& iterators, std::vector<uin
 
     for (auto& it : iterators) it.rewind();
 
-    const uint32_t num_docs = iterators[0].num_docs();
+    const uint32_t num_colors = iterators[0].num_colors();
     std::vector<std::vector<uint32_t>> sets(iterators.size());
     for (uint64_t i = 0; i != iterators.size(); ++i) {
         auto& it = iterators[i];
         uint32_t val = it.value();
-        while (val < num_docs) {
+        while (val < num_colors) {
             sets[i].push_back(val);
             it.next();
             val = it.value();
@@ -139,11 +149,15 @@ inline uint8_t lsb(uint64_t x, unsigned long& ret) {
 
 __uint128_t hash128(char const* bytes, uint64_t num_bytes, const uint64_t seed = 1234567890) {
     auto ret = CityHash128WithSeed(bytes, num_bytes, {seed, seed});
-    __uint128_t out;
-    *(reinterpret_cast<uint64_t*>(&out) + 0) = ret.first;
-    *(reinterpret_cast<uint64_t*>(&out) + 1) = ret.second;
+    __uint128_t out = 0;
+    out += __uint128_t(ret.first);
+    out += __uint128_t(ret.second) << 64;
     return out;
 }
+
+struct hasher_uint128_t {
+    uint64_t operator()(const __uint128_t x) const { return static_cast<uint64_t>(x) ^ (x >> 64); }
+};
 
 }  // namespace util
 }  // namespace fulgor

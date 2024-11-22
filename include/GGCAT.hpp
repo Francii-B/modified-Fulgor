@@ -3,7 +3,7 @@
 #include <functional>
 #include <vector>
 
-#include "../external/ggcat/crates/capi/ggcat-cpp-api/include/ggcat.hh"
+#include "external/ggcat/crates/capi/ggcat-cpp-api/include/ggcat.hh"
 #include "util.hpp"
 
 namespace fulgor {
@@ -74,7 +74,7 @@ struct GGCAT {
         m_instance->dump_unitigs(m_graph_file, m_k, num_threads, num_threads == 1, callback, true);
     }
 
-    uint64_t num_docs() const { return m_filenames.size(); }
+    uint64_t num_colors() const { return m_filenames.size(); }
     std::vector<std::string> const& filenames() const { return m_filenames; }
 
 private:
