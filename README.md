@@ -38,8 +38,8 @@ Modified-Fulgor provides additional functionalities to its original version:
 -->
 
 - <b>Perform threshold-union pseudoalignment considering ALL query k-mers</b>: pseudoaligments return matches that share at least $\ t*s$ k-mers with the query, where:
-	- $\\t$ = threshold; [0-1]
-	- $\\s$ = <b>total</b> number of k-mers in the query
+	- $ t$ = threshold; [0-1]
+	- $ s$ = <b>total</b> number of k-mers in the query
 
 
 - <b>Find Best matches for a query</b>: Use `--best_hits` flag and set a value for `--threshold` to return only the best matches for a query. Also in this case, ALL query k-mers will be considered. The output includes:
@@ -58,7 +58,7 @@ Modified-Fulgor provides additional functionalities to its original version:
 
 -->
 
-- <b>Return COBS-like output for threshold-union</b>: Use `--cobs` flag and set a value for `--threshold` to generate output in COBS-like format. This option is not compatible with `--best_hits`.
+- <b>Return threshold-union output in a [COBS](https://github.com/iqbal-lab-org/cobs)-like format</b>: Use `--cobs` flag and set a value for `--threshold` to generate output in COBS-like format. This option is not compatible with `--best_hits`.
 
 <b></b>
    
