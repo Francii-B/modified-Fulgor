@@ -347,9 +347,9 @@ int pseudoalign(int argc, char** argv) {
            best_hits,
            "Output the best hits for each query.");
     app.add_flag(
-        "--tsv",
+        "--cobs",
         tsv,
-        "Print the output as tsv (only union-threshold, classic version). Not compatible with --best-hits. This last will have the priority in case of both flags.");
+        "Return the output in a COBS-like (only union-threshold, classic version). Not compatible with --best-hits. This last will have the priority in case of both flags.");
     CLI11_PARSE(app, argc, argv);
 
     util::print_cmd(argc, argv);

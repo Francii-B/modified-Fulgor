@@ -1,7 +1,7 @@
 modified-Fulgor
 ======
 
-This is a <b>modified version of [Fulgor](https://github.com/jermp/fulgor) </b> (v.2.0.0). 
+This is a <b>modified version of [Fulgor](https://github.com/jermp/fulgor) </b> (v.2.0.0). Indexes built with this version are compatible with original Fulgor v.2.0.0 (and viceversa) but <b>not</b> with v.3.0.0.
 
 Fulgor is a *(meta-) colored compacted de Bruijn graph* index for large-scale matching and color queries, powered by [SSHash](https://github.com/jermp/sshash) and [GGCAT](https://github.com/algbio/GGCAT).
 
@@ -9,22 +9,24 @@ Fulgor is a *(meta-) colored compacted de Bruijn graph* index for large-scale ma
 ------------
 
 ### Table of contents
-* [Differences from the original Fulgor](#-differences-from-the-original-fulgor)
+* [Differences from the original Fulgor](#differences-from-the-original-fulgor)
 * [Dependencies](#dependencies)
 * [Compiling the code](#compiling-the-code)
 * [Tools and usage](#tools-and-usage)
 * [Quick start](#quick-start)
 * [Indexing an example Salmonella pangenome](#indexing-an-example-salmonella-pangenome)
-* [Pseudoalignment output format](#pseudoalignment-output-format)
 
+<!--
+* [Pseudoalignment output format](#pseudoalignment-output-format)
+-->
 
 
 Differences from the original Fulgor
 ------------
-This version of Fulgor enables to:
+Modified-Fulgor provides additional functionalities its original version:
 
-- <b>Build meta-Fulgor indexes with custom clusters/permutation order</b>: To enhance color set compression, meta-Fulgor involves a step of clustering and permutation during index building. It is possible to skip clustering and customize the final permution order of colors by providing the clusters and color order in `custom_clusters.tsv`. Modified-Fulgor expects to find this file in the working directory, inside `./external_clusters/`. The headerless file must include three columns:
-	- `filename`: same as the ones provided in the input. Permutation order is defined by the filename order in the file.
+- <b>Build meta-Fulgor indexes with custom clusters/permutation order</b>: To enhance color set compression, meta-Fulgor involves a step of clustering and permutation during index building. It is possible to skip clustering and customize the final permution order of colors by providing clusters and color order in `custom_clusters.tsv`. Modified-Fulgor expects to find this file in the working directory, inside `./external_clusters/`. The headerless file must include three columns:
+	- `filename`: same as the ones provided as input. Permutation order is defined by the filename order in the file.
 	- `fulgorID`:  ID assigned by Fulgor during the inital input file parsing (0 to total files - 1).
 	- `clusterID`: Cluster number (0 to total clusters - 1)
 
@@ -35,7 +37,39 @@ This version of Fulgor enables to:
 
 -->
 
--
+- <b>Perform threshold-union pseudoalignment considering ALL query k-mers</b>: pseudoaliments return matches that share at least $\ t*s$ k-mers with the query, where:
+	- $\ t $ = threshold; [0-1]
+	- $\ s $ = <b>total</b> number of k-mers in the query
+
+
+- <b>Find Best matches for a query</b>: Use `--best_hits` flag and set a value for `--threshold` to return only the best matches for a query. Also in this case, ALL query k-mers will be considered. The output includes:
+	- `query-names`
+	- `num. of shared k-mers`
+	- `best-match filenames` as the comma-separated list
+
+<b></b>
+   
+    ./fulgor pseudoalign -i <fur/mfur-index> -q <query> --threshold <min-threshold> --best_hits -o <output-file> 
+
+<!--
+<b></b>
+   
+    file structure
+
+-->
+
+- <b>Return COBS-like output for threshold-union</b>: Use `--cobs` flag and set a value for `--threshold` to generate output in COBS-like format. This option is not compatible with `--best_hits`.
+
+<b></b>
+   
+    ./fulgor pseudoalign -i <fur/mfur-index> -q <query> --threshold <min-threshold> --cobs -o <output-file> 
+<!--
+<b></b>
+   
+    file structure
+
+-->
+
 
 Dependencies
 ------------
@@ -112,12 +146,11 @@ Run `./fulgor` to see a list of available tools.
 	  dump-colors        write colors to an output file in text format
 
 
-<!--
 For large-scale indexing, it could be necessary to increase the number of file descriptors that can be opened simultaneously:
 
 	ulimit -n 2048
 
--->
+
 
 Quick start
 -----------
@@ -180,6 +213,7 @@ To partition the index to obtain a meta-colored Fulgor index, then do:
 The meta-colored index will be serialized to the file `~/Salmonella_enterica/salmonella_4546.mfur`
 and will take 0.104 GB (2.55X smaller than the `.fur` index).
 
+<!--
 Pseudoalignment output format
 -----------------------------
 
@@ -201,6 +235,7 @@ where `[list]` is a TAB-separated list of increasing integers, of length `[list-
 	NODE_9_length_173161_cov_9.33695_ID_17  1       0
 	NODE_22_length_45757_cov_12.1361_ID_43  1       0
 
+
 #### Important note
 
 If pseudoalignment is performed against a **meta-colored** Fulgor index,
@@ -209,3 +244,4 @@ This is because the meta-colored index re-assignes identifiers to references to 
 
 In this case, the reference identifiers in the pseudoalignment output
 are consistent with the ones returned by the `print-filenames` tool.
+-->
