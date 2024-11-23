@@ -1,24 +1,41 @@
-Fulgor
+modified-Fulgor
 ======
+
+This is a <b>modified version of [Fulgor](https://github.com/jermp/fulgor) </b> (v.2.0.0). 
 
 Fulgor is a *(meta-) colored compacted de Bruijn graph* index for large-scale matching and color queries, powered by [SSHash](https://github.com/jermp/sshash) and [GGCAT](https://github.com/algbio/GGCAT).
 
-The Fulgor index is described in the following papers:
 
-- [**Fulgor: A Fast and Compact k-mer Index for Large-Scale Matching and Color Queries**](https://almob.biomedcentral.com/articles/10.1186/s13015-024-00251-9) (Algorithms for Molecular Biology, ALMOB 2024):
-<!--	- [WABI 2023 version](https://drops.dagstuhl.de/opus/volltexte/2023/18644/)-->
-
-- [**Meta-colored compacted de Bruijn graphs**](https://www.biorxiv.org/content/10.1101/2023.07.21.550101v2.full.pdf) (International Conference on Research in Computational Molecular Biology, RECOMB 2024).
-
-Please, cite these papers if you use Fulgor.
+------------
 
 ### Table of contents
+* [Differences from the original Fulgor](#-differences-from-the-original-fulgor)
 * [Dependencies](#dependencies)
 * [Compiling the code](#compiling-the-code)
 * [Tools and usage](#tools-and-usage)
 * [Quick start](#quick-start)
 * [Indexing an example Salmonella pangenome](#indexing-an-example-salmonella-pangenome)
 * [Pseudoalignment output format](#pseudoalignment-output-format)
+
+
+
+Differences from the original Fulgor
+------------
+This version of Fulgor enables to:
+
+- <b>Build meta-Fulgor indexes with custom clusters/permutation order</b>: To enhance color set compression, meta-Fulgor involves a step of clustering and permutation during index building. It is possible to skip clustering and customize the final permution order of colors by providing the clusters and color order in `custom_clusters.tsv`. Modified-Fulgor expects to find this file in the working directory, inside `./external_clusters/`. The headerless file must include three columns:
+	- `filename`: same as the ones provided in the input. Permutation order is defined by the filename order in the file.
+	- `fulgorID`:  ID assigned by Fulgor during the inital input file parsing (0 to total files - 1).
+	- `clusterID`: Cluster number (0 to total clusters - 1)
+
+<!--
+<b></b>
+   
+    file structure
+
+-->
+
+-
 
 Dependencies
 ------------
@@ -94,9 +111,13 @@ Run `./fulgor` to see a list of available tools.
 	  partition          partition a Fulgor index and build a meta-colored Fulgor index
 	  dump-colors        write colors to an output file in text format
 
+
+<!--
 For large-scale indexing, it could be necessary to increase the number of file descriptors that can be opened simultaneously:
 
 	ulimit -n 2048
+
+-->
 
 Quick start
 -----------
