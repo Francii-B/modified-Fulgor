@@ -23,7 +23,7 @@ Fulgor is a *(meta-) colored compacted de Bruijn graph* index for large-scale ma
 
 Differences from the original Fulgor
 ------------
-Modified-Fulgor provides additional functionalities its original version:
+Modified-Fulgor provides additional functionalities to its original version:
 
 - <b>Build meta-Fulgor indexes with custom clusters/permutation order</b>: To enhance color set compression, meta-Fulgor involves a step of clustering and permutation during index building. It is possible to skip clustering and customize the final permution order of colors by providing clusters and color order in `custom_clusters.tsv`. Modified-Fulgor expects to find this file in the working directory, inside `./external_clusters/`. The headerless file must include three columns:
 	- `filename`: same as the ones provided as input. Permutation order is defined by the filename order in the file.
