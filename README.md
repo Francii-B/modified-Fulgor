@@ -25,9 +25,9 @@ Differences from the original Fulgor
 ------------
 Modified-Fulgor provides additional functionalities to its original version:
 
-- <b>Build meta-Fulgor indexes with custom clusters/permutation order</b>: To enhance color set compression, meta-Fulgor involves a step of clustering and permutation during index building. It is possible to skip clustering and customize the final permution order of colors by providing clusters and color order in `custom_clusters.tsv`. Modified-Fulgor expects to find this file in the working directory, inside `./external_clusters/`. The headerless file must include three columns:
+- <b>Build meta-Fulgor indexes with custom clusters/permutation order</b>: To enhance color sets compression, meta-Fulgor involves a step of clustering and permutation during index building. It is possible to skip clustering and customize the final permution order of colors by providing clusters and color order in `custom_clusters.tsv`. Modified-Fulgor expects to find this file in the working directory, inside `./external_clusters/`. The headerless file must include three columns:
 	- `filename`: same as the ones provided as input. Permutation order is defined by the filename order in the file.
-	- `fulgorID`:  ID assigned by Fulgor during the inital input file parsing (0 to total files - 1).
+	- `fulgorID`:  ID assigned by Fulgor during the initial input file parsing (0 to total files - 1).
 	- `clusterID`: Cluster number (0 to total clusters - 1)
 
 <!--
@@ -37,9 +37,9 @@ Modified-Fulgor provides additional functionalities to its original version:
 
 -->
 
-- <b>Perform threshold-union pseudoalignment considering ALL query k-mers</b>: pseudoaliments return matches that share at least $\ t*s$ k-mers with the query, where:
-	- $\ t $ = threshold; [0-1]
-	- $\ s $ = <b>total</b> number of k-mers in the query
+- <b>Perform threshold-union pseudoalignment considering ALL query k-mers</b>: pseudoaligments return matches that share at least $\ t*s$ k-mers with the query, where:
+	- $\\t$ = threshold; [0-1]
+	- $\\s$ = <b>total</b> number of k-mers in the query
 
 
 - <b>Find Best matches for a query</b>: Use `--best_hits` flag and set a value for `--threshold` to return only the best matches for a query. Also in this case, ALL query k-mers will be considered. The output includes:
