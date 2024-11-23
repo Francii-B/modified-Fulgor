@@ -37,9 +37,9 @@ Modified-Fulgor provides additional functionalities to its original version:
 
 -->
 
-- <b>Perform threshold-union pseudoalignment considering ALL query k-mers</b>: pseudoaligments return matches that share at least $ t*s$ k-mers with the query, where:
-	- $ t$ = threshold
-	- $ s$ = <b>total</b> number of k-mers in the query
+- <b>Perform threshold-union pseudoalignment considering ALL query k-mers</b>: pseudoaligments return matches that share at least $\ t*s$ k-mers with the query, where:
+	- t = threshold
+	- s = <b>total</b> number of k-mers in the query
 
 
 - <b>Find Best matches for a query</b>: Use `--best_hits` flag and set a value for `--threshold` to return only the best matches for a query. Also in this case, ALL query k-mers will be considered. The output includes:
