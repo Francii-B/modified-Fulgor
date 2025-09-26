@@ -102,7 +102,7 @@ To build the code, [`CMake`](https://cmake.org/) is required.
 
 First clone the repository with
 
-    git clone https://github.com/jermp/fulgor.git
+    git clone https://github.com/Francii-B/modified-Fulgor.git
 
 and then do
 
