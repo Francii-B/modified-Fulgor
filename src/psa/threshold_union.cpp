@@ -203,7 +203,13 @@ void index<ColorClasses>::pseudoalign_threshold_union(std::string const& sequenc
 
     /* as Bifrost and Metagraph do */ //modification: comment the default min_score value
     uint64_t num_kmers_in_sequence = sequence.length() - m_k2u.k() + 1;
-    uint64_t min_score = static_cast<double>(num_kmers_in_sequence) * threshold;
+    uint64_t min_score;
+
+    if (threshold == 0) { //set min_score to 1 (avoid all indexed sequences as output)
+        min_score = 1;
+    } else {
+        min_score = static_cast<uint64_t>(static_cast<double>(num_kmers_in_sequence) * threshold);
+    }
 
     if(best_hits) { //modification
         merge_best(iterators, colors, min_score);
@@ -270,7 +276,13 @@ void index<ColorClasses>::pseudoalign_threshold_union(std::string const& sequenc
 
     /* as Bifrost and Metagraph do */ //modification: comment the default min_score value
     uint64_t num_kmers_in_sequence = sequence.length() - m_k2u.k() + 1;
-    uint64_t min_score = static_cast<double>(num_kmers_in_sequence) * threshold;
+    uint64_t min_score;
+
+    if (threshold == 0) {
+        min_score = 1; //set min_score to 1 (avoid all indexed sequences as output)
+    } else {
+        min_score = static_cast<uint64_t>(static_cast<double>(num_kmers_in_sequence) * threshold);
+    }
 
     merge_tsv(iterators, colors, min_score); //modification
 }
