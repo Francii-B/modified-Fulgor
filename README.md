@@ -37,12 +37,12 @@ Modified-Fulgor provides additional functionalities to its original version:
 
 -->
 
-- <b>Perform threshold-union pseudoalignment considering ALL query k-mers</b>: pseudoaligments return matches that share at least $\ t*s$ k-mers with the query, where:
+- <b>Perform threshold-union pseudoalignment considering ALL query <i>k</i>-mers</b>: pseudoaligments return matches that share at least $\ t*s$ <i>k</i>-mers with the query, where:
 	- t = threshold
-	- s = <b>total</b> number of k-mers in the query
+	- s = <b>total</b> number of <i>k</i>-mers in the query
 
 
-- <b>Find Best matches for a query</b>: Use `--best_hits` flag and set a value for `--threshold` to return only the best matches for a query. Also in this case, ALL query k-mers will be considered. The output includes:
+- <b>Find Best matches for a query</b>: Use `--best_hits` flag and set a value for `--threshold` to return only the best matches for a query. Also in this case, ALL query <i>k</i>-mers will be considered. The output includes:
 	- `query-names`
 	- `num. of shared k-mers`
 	- `best-match filenames` as the comma-separated list
@@ -70,6 +70,17 @@ Modified-Fulgor provides additional functionalities to its original version:
 
 -->
 
+- <b>Return matches sharing at least one <i>k</i>-mer</b>: When --threshold is set to 0, Fulgor will not output all sequences in the index. Instead, it will only return those that share at least one <i>k</i>-mer with the query.
+
+<b></b>
+   
+    ./fulgor pseudoalign -i <fur/mfur-index> -q <query> --threshold <min-threshold> --cobs -o <output-file> 
+<!--
+<b></b>
+   
+    file structure
+
+-->
 
 Dependencies
 ------------
@@ -103,6 +114,7 @@ To build the code, [`CMake`](https://cmake.org/) is required.
 First clone the repository with
 
     git clone https://github.com/Francii-B/modified-Fulgor.git
+	cd modified-Fulgor
 
 and then do
 
