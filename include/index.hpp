@@ -13,6 +13,11 @@ namespace fulgor {
 using kmer_type = sshash::default_kmer_t;
 using sshash_type = sshash::dictionary<kmer_type>;
 
+struct pseudoalignment_match {
+    uint32_t color;
+    uint32_t score;
+};
+
 template <typename ColorSets>
 struct index {
     typedef ColorSets color_sets_type;
@@ -43,6 +48,9 @@ struct index {
     void pseudoalign_threshold_union(std::string const& sequence,     //
                                      std::vector<uint32_t>& results,  //
                                      const double threshold) const;   //
+    void pseudoalign_threshold_union(std::string const& sequence,                //
+                                     std::vector<pseudoalignment_match>& hits,  //
+                                     const double threshold) const;             //
 
     void kmer_conservation(std::string const& sequence,                                           //
                            std::vector<kmer_conservation_triple>& kmer_conservation_info) const;  //

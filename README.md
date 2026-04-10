@@ -1,5 +1,5 @@
-[![Build](https://github.com/jermp/fulgor/actions/workflows/build.yml/badge.svg)](https://github.com/jermp/fulgor/actions/workflows/build.yml)
-[![CodeQL](https://github.com/jermp/fulgor/actions/workflows/codeql.yml/badge.svg)](https://github.com/jermp/fulgor/actions/workflows/codeql.yml)
+[![Build](https://github.com/Francii-B/modified-Fulgor/actions/workflows/build.yml/badge.svg)](https://github.com/Francii-B/modified-Fulgor/actions/workflows/build.yml)
+[![CodeQL](https://github.com/Francii-B/modified-Fulgor/actions/workflows/codeql.yml/badge.svg)](https://github.com/Francii-B/modified-Fulgor/actions/workflows/codeql.yml)
 [![install with bioconda](https://img.shields.io/badge/Install%20with-bioconda-brightgreen.svg?style=flat&logo=anaconda&logoColor=lightgray&labelColor=rgb(40,47,56)&color=rgb(68,190,80))](http://bioconda.github.io/recipes/fulgor/README.html)
 
 <picture>
@@ -8,6 +8,26 @@
 </picture>
 
 **Fulgor** is a *colored de Bruijn graph* index for large-scale matching and color queries, powered by [SSHash](https://github.com/jermp/sshash) and [GGCAT](https://github.com/algbio/GGCAT).
+
+> [!IMPORTANT]
+> **Fork delta from upstream `jermp/fulgor` `v4.1.0`**
+>
+> This repository is a fork of [jermp/fulgor](https://github.com/jermp/fulgor) based on `v4.1.0`.
+> It keeps only a minimal Phylign-compatible patch on the `pseudoalign` query path:
+>
+> `./fulgor pseudoalign --threshold <t> -i <index>.mfur -q <query.fa> --cobs -o <output>`
+>
+> Relative to standard upstream Fulgor `v4.1.0`, this fork changes only:
+>
+> - `pseudoalign` accepts `--threshold` as a compatibility spelling for threshold-union queries.
+> - threshold-union uses all query k-mers when computing the minimum score.
+> - `--threshold 0` returns only references sharing at least one k-mer with the query.
+> - `--cobs` writes the COBS-like block format expected by downstream `postprocess_cobs.py`.
+>
+> Other historical `modified-Fulgor` features were intentionally not carried forward.
+>
+> The Phylign-Fulgor use case is described in:
+> Brunetti, F.; Břinda, K. **Optimized k-mer search across millions of bacterial genomes on laptops**. bioRxiv, 2025. [10.1101/2025.11.23.690050](https://www.biorxiv.org/content/10.1101/2025.11.23.690050v1)
 
 The Fulgor index is described in the following papers.
 
@@ -20,6 +40,7 @@ colored de Bruijn graphs**](https://doi.org/10.4230/LIPIcs.WABI.2025.6) (Interna
 Please, cite these papers if you use Fulgor.
 
 ### Table of contents
+* [Fork-specific pseudoalign behavior](#fork-specific-pseudoalign-behavior)
 * [Dependencies](#dependencies)
 * [Compiling the code](#compiling-the-code)
 * [Tools and usage](#tools-and-usage)
@@ -27,6 +48,18 @@ Please, cite these papers if you use Fulgor.
 * [Indexing an example Salmonella Enterica pangenome](#indexing-an-example-salmonella-enterica-pangenome)
 * [Pseudoalignment output format](#pseudoalignment-output-format)
 * [Kmer conservation output format](#kmer-conservation-output-format)
+
+Fork-specific pseudoalign behavior
+----------------------------------
+
+The upstream delta is summarized in the boxed note above. The fork-specific output contract on the supported Phylign path is:
+
+The `--cobs` output format is:
+
+    *<query-name>[TAB]<match-count>
+    _<reference-stem>[TAB]<shared-kmers>
+
+with one hit line per reported reference, ordered by descending shared-k-mer count.
 
 Dependencies
 ------------
@@ -59,7 +92,7 @@ To build the code, [`CMake`](https://cmake.org/) is required.
 
 First clone the repository with
 
-    git clone https://github.com/jermp/fulgor.git
+    git clone https://github.com/Francii-B/modified-Fulgor.git
 
 and then do
 
@@ -203,6 +236,8 @@ This file has one line for each mapped read, formatted as follows:
 	[read-name][TAB][list-lenght][TAB][list]
 
 where `[list]` is a TAB-separated list of increasing integers, of length `[list-length]`, representing the list of reference identifiers to which the read is mapped. (`[TAB]` is the character `\t`.)
+
+If `--cobs` is provided together with `--threshold`, this fork writes the Phylign-compatible COBS-like format described above instead of the default tabular output.
 
 #### Example
 
