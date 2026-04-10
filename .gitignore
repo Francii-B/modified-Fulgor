@@ -1,6 +1,13 @@
 .DS_Store
-build
-debug_build
+/build/
+/build-port/
+/debug_build/
+/CMakeCache.txt
+/CMakeFiles/
+/cmake_install.cmake
+/CTestTestfile.cmake
+/Testing/
+/compile_commands.json
 test_data
 .idea
 *.swp
