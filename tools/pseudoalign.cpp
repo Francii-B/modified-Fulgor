@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 #include <sstream>
 
 #include "external/sshash/external/gz/zip_stream.hpp"
@@ -30,9 +31,10 @@ template <typename FulgorIndex>
 int pseudoalign(FulgorIndex const& index, fastx_parser::FastxParser<fastx_parser::ReadSeq>& rparser,
                 std::atomic<uint64_t>& num_reads, std::atomic<uint64_t>& num_mapped_reads,
                 pseudoalignment_algorithm algo, const double threshold, std::ofstream& out_file,
-                std::mutex& iomut, std::mutex& ofile_mut)  //
+                std::mutex& iomut, std::mutex& ofile_mut, const bool cobs_output)  //
 {
     std::vector<uint32_t> colors;  // result of pseudoalignment
+    std::vector<pseudoalignment_match> matches;
     std::stringstream ss;
     uint64_t buff_size = 0;
     constexpr uint64_t buff_thresh = 50;
@@ -45,22 +47,38 @@ int pseudoalign(FulgorIndex const& index, fastx_parser::FastxParser<fastx_parser
                     index.pseudoalign_full_intersection(record.seq, colors);
                     break;
                 case pseudoalignment_algorithm::THRESHOLD_UNION:
-                    index.pseudoalign_threshold_union(record.seq, colors, threshold);
+                    if (cobs_output) {
+                        index.pseudoalign_threshold_union(record.seq, matches, threshold);
+                    } else {
+                        index.pseudoalign_threshold_union(record.seq, colors, threshold);
+                    }
                     break;
                 default:
                     break;
             }
             buff_size += 1;
-            if (!colors.empty()) {
-                num_mapped_reads += 1;
-                ss << record.name << '\t' << colors.size();
-                for (auto c : colors) { ss << "\t" << c; }
-                ss << '\n';
+            if (cobs_output) {
+                if (!matches.empty()) num_mapped_reads += 1;
+                ss << '*' << record.name << '\t' << matches.size() << '\n';
+                for (auto const& match : matches) {
+                    auto stem = std::filesystem::path(std::string(index.filename(match.color)))
+                                    .stem()
+                                    .string();
+                    ss << '_' << stem << '\t' << match.score << '\n';
+                }
             } else {
-                ss << record.name << "\t0\n";
+                if (!colors.empty()) {
+                    num_mapped_reads += 1;
+                    ss << record.name << '\t' << colors.size();
+                    for (auto c : colors) { ss << "\t" << c; }
+                    ss << '\n';
+                } else {
+                    ss << record.name << "\t0\n";
+                }
             }
             num_reads += 1;
             colors.clear();
+            matches.clear();
             if (num_reads > 0 and num_reads % 1000000 == 0) {
                 iomut.lock();
                 std::cout << "mapped " << num_reads << " reads" << std::endl;
@@ -93,13 +111,14 @@ int pseudoalign(FulgorIndex const& index, fastx_parser::FastxParser<fastx_parser
 template <typename FulgorIndex>
 int pseudoalign(std::string const& index_filename, std::string const& query_filename,
                 std::string const& output_filename, uint64_t num_threads, double threshold,
-                pseudoalignment_algorithm ps_alg, const bool verbose) {
+                pseudoalignment_algorithm ps_alg, const bool verbose, const bool cobs_output) {
     FulgorIndex index;
     if (verbose) essentials::logger("loading index from disk...");
     essentials::load(index, index_filename.c_str());
     if (verbose) essentials::logger("DONE");
 
     std::cerr << "query mode : " << to_string(ps_alg, threshold) << "\n";
+    if (cobs_output) std::cerr << "output format : cobs-like\n";
 
     std::ifstream is(query_filename.c_str());
     if (!is.good()) {
@@ -133,9 +152,9 @@ int pseudoalign(std::string const& index_filename, std::string const& query_file
 
     for (uint64_t i = 1; i != num_threads; ++i) {
         workers.push_back(std::thread([&index, &rparser, &num_reads, &num_mapped_reads, ps_alg,
-                                       threshold, &out_file, &iomut, &ofile_mut]() {
+                                       threshold, &out_file, &iomut, &ofile_mut, cobs_output]() {
             pseudoalign(index, rparser, num_reads, num_mapped_reads, ps_alg, threshold, out_file,
-                        iomut, ofile_mut);
+                        iomut, ofile_mut, cobs_output);
         }));
     }
 
@@ -159,7 +178,17 @@ int pseudoalign(std::string const& index_filename, std::string const& query_file
 }
 
 int pseudoalign(int argc, char** argv) {
-    cmd_line_parser::parser parser(argc, argv);
+    std::vector<std::string> normalized_args;
+    normalized_args.reserve(argc);
+    for (int i = 0; i != argc; ++i) {
+        normalized_args.emplace_back(argv[i]);
+        if (normalized_args.back() == "--threshold") normalized_args.back() = "-r";
+    }
+    std::vector<char*> normalized_argv;
+    normalized_argv.reserve(argc);
+    for (auto& arg : normalized_args) normalized_argv.push_back(arg.data());
+
+    cmd_line_parser::parser parser(argc, normalized_argv.data());
 
     parser.add("index_filename", "The Fulgor index filename.", "-i", true);
     parser.add("query_filename", "Query filename in FASTA/FASTQ format (optionally gzipped).", "-q",
@@ -173,8 +202,11 @@ int pseudoalign(int argc, char** argv) {
     parser.add("verbose", "Verbose output during query (default is false).", "--verbose", false,
                true);
     parser.add("threshold",
-               "Threshold for threshold_union algorithm. It must be a float in (0.0,1.0].", "-r",
+               "Threshold for threshold_union algorithm. It must be a float in [0.0,1.0].", "-r",
                false);
+    parser.add("cobs",
+               "Write threshold-union output in the COBS-like format expected by Phylign.",
+               "--cobs", false, true);
     if (!parser.parse()) return 1;
 
     auto index_filename = parser.get<std::string>("index_filename");
@@ -192,14 +224,19 @@ int pseudoalign(int argc, char** argv) {
 
     double threshold = constants::invalid_threshold;
     if (parser.parsed("threshold")) threshold = parser.get<double>("threshold");
-    if (threshold == 0.0 or threshold > 1.0) {
-        std::cerr << "threshold must be a float in (0.0,1.0]" << std::endl;
+    if (threshold != constants::invalid_threshold && (threshold < 0.0 || threshold > 1.0)) {
+        std::cerr << "threshold must be a float in [0.0,1.0]" << std::endl;
         return 1;
     }
 
     auto ps_alg = pseudoalignment_algorithm::FULL_INTERSECTION;
     if (threshold != constants::invalid_threshold) {
         ps_alg = pseudoalignment_algorithm::THRESHOLD_UNION;
+    }
+    const bool cobs_output = parser.get<bool>("cobs");
+    if (cobs_output && ps_alg != pseudoalignment_algorithm::THRESHOLD_UNION) {
+        std::cerr << "--cobs requires --threshold" << std::endl;
+        return 1;
     }
 
     bool verbose = parser.get<bool>("verbose");
@@ -210,18 +247,19 @@ int pseudoalign(int argc, char** argv) {
                                 constants::meta_diff_colored_fulgor_filename_extension)) {
         return pseudoalign<meta_differential_index_type>(index_filename, query_filename,
                                                          output_filename, num_threads, threshold,
-                                                         ps_alg, verbose);
+                                                         ps_alg, verbose, cobs_output);
     } else if (sshash::util::ends_with(index_filename,
                                        constants::meta_colored_fulgor_filename_extension)) {
         return pseudoalign<meta_index_type>(index_filename, query_filename, output_filename,
-                                            num_threads, threshold, ps_alg, verbose);
+                                            num_threads, threshold, ps_alg, verbose, cobs_output);
     } else if (sshash::util::ends_with(index_filename,
                                        constants::diff_colored_fulgor_filename_extension)) {
         return pseudoalign<differential_index_type>(index_filename, query_filename, output_filename,
-                                                    num_threads, threshold, ps_alg, verbose);
+                                                    num_threads, threshold, ps_alg, verbose,
+                                                    cobs_output);
     } else if (sshash::util::ends_with(index_filename, constants::fulgor_filename_extension)) {
         return pseudoalign<index_type>(index_filename, query_filename, output_filename, num_threads,
-                                       threshold, ps_alg, verbose);
+                                       threshold, ps_alg, verbose, cobs_output);
     }
 
     std::cerr << "Wrong index filename supplied." << std::endl;
