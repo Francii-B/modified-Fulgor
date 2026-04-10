@@ -6,10 +6,21 @@ The public `Phylign-Fulgor` query workflow can run unchanged at the command leve
 
 ```bash
 fulgor pseudoalign --threshold <t> -i <index>.mfur -q <query.fa> --cobs -o <output>
-cat <output> | ./scripts/postprocess_cobs.py -n <n>
+./scripts/postprocess_cobs.py -n <n> < <output>
 ```
 
 `postprocess_cobs.py` does not need to change.
+
+## Integration Guarantee
+
+The validated public integration path is:
+
+```bash
+fulgor pseudoalign --threshold <t> -i <index>.mfur -q <query.fa> --cobs -o <output>
+./scripts/postprocess_cobs.py -n <n> < <output>
+```
+
+For that tested path, this fork is compatible with the previous public pipeline that used `modified-Fulgor`.
 
 ## What "Unchanged" Means
 
@@ -28,7 +39,7 @@ Replace:
 with the path to this fork's built binary, for example:
 
 ```bash
-/path/to/this/fork/build-port/fulgor
+./build-port/fulgor
 ```
 
 No flag or post-processing changes are required.
@@ -37,5 +48,13 @@ In `Phylign-Fulgor/Snakefile`, the minimal edit is therefore:
 
 ```diff
 - ./external/modified-Fulgor/build/fulgor pseudoalign \
-+ /path/to/this/fork/build-port/fulgor pseudoalign \
++ ./build-port/fulgor pseudoalign \
 ```
+
+## Non-Guarantees
+
+This fork does not guarantee:
+
+- historical v2 index compatibility
+- identical behavior outside the Phylign-relevant query path
+- support for features intentionally not ported from the old `modified-Fulgor` tree
