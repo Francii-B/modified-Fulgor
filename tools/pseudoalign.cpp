@@ -118,7 +118,6 @@ int pseudoalign(std::string const& index_filename, std::string const& query_file
     if (verbose) essentials::logger("DONE");
 
     std::cerr << "query mode : " << to_string(ps_alg, threshold) << "\n";
-    if (cobs_output) std::cerr << "output format : cobs-like\n";
 
     std::ifstream is(query_filename.c_str());
     if (!is.good()) {

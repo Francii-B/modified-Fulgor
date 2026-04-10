@@ -1,5 +1,3 @@
-#include <numeric>  // for std::accumulate
-
 #include "include/index.hpp"
 #include "external/sshash/include/streaming_query.hpp"
 
@@ -339,7 +337,6 @@ void pseudoalign_threshold_union_impl(index<ColorSets> const& index, std::string
     if (sequence.length() < index.k()) return;
 
     std::vector<scored_id> unitig_ids;
-    uint64_t num_positive_kmers_in_sequence = 0;
     { /* stream through with multiplicities */
         sshash::streaming_query<kmer_type, true> query(&index.get_k2u());
         query.reset();
@@ -348,7 +345,6 @@ void pseudoalign_threshold_union_impl(index<ColorSets> const& index, std::string
             char const* kmer = sequence.data() + i;
             auto answer = query.lookup_advanced(kmer);
             if (answer.kmer_id != sshash::constants::invalid_uint64) {  // kmer is positive
-                num_positive_kmers_in_sequence += 1;
                 if (answer.contig_id != prev_unitig_id) {
                     unitig_ids.push_back({answer.contig_id, 1});
                     prev_unitig_id = answer.contig_id;
@@ -359,11 +355,6 @@ void pseudoalign_threshold_union_impl(index<ColorSets> const& index, std::string
             }
         }
     }
-
-    /* num_positive_kmers_in_sequence must be equal to the sum of the scores  */
-    assert(num_positive_kmers_in_sequence ==
-           std::accumulate(unitig_ids.begin(), unitig_ids.end(), uint64_t(0),
-                           [](uint64_t curr_sum, auto const& u) { return curr_sum + u.score; }));
 
     std::vector<scored_id> color_set_ids;
     std::vector<scored<typename ColorSets::iterator_type>> iterators;

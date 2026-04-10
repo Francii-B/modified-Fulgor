@@ -1,5 +1,0 @@
-/Users/karel/git/modified-Fulgor/build-port/CMakeFiles/ggcat_cpp_api.dir
-/Users/karel/git/modified-Fulgor/build-port/CMakeFiles/fulgor.dir
-/Users/karel/git/modified-Fulgor/build-port/CMakeFiles/test.dir
-/Users/karel/git/modified-Fulgor/build-port/CMakeFiles/edit_cache.dir
-/Users/karel/git/modified-Fulgor/build-port/CMakeFiles/rebuild_cache.dir

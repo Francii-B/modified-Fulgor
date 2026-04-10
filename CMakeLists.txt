@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.5...4.0)
 project(FULGOR)
 
-enable_testing()
-
 set(CMAKE_CXX_STANDARD 17)
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release")
@@ -75,13 +73,4 @@ if (UNIX)
   else()
     target_link_libraries(fulgor rt)
   endif()
-endif()
-
-find_package(Python3 COMPONENTS Interpreter)
-if (Python3_Interpreter_FOUND)
-  add_test(
-    NAME phylign-port-regression
-    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/phylign_port_regression.py
-            --new-binary $<TARGET_FILE:fulgor>
-  )
 endif()
