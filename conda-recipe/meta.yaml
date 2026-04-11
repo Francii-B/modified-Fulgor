@@ -13,8 +13,8 @@ source:
   # git_rev: <full_commit_hash>
   # git_depth: 1
 
-  #patches:
-  #  - GGCAT_Makefile.patch
+  patches:
+    - GGCAT_Makefile.patch
 
 build:
   number: 0
