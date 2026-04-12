@@ -1,0 +1,40 @@
+{% set name = "modified-fulgor" %}
+{% set version = "2.0.0.post2" %}
+
+package:
+  name: "{{ name|lower }}"
+  version: "{{ version }}"
+
+source:
+  path: ..
+  patches:
+    - GGCAT_Makefile.patch
+    - dynamic_dispatch_time.patch
+
+build:
+  number: 1
+  skip: true # [win]
+
+requirements:
+  build:
+    - {{ compiler('cxx') }}
+    - {{ compiler('rust') }}
+    - cmake
+    - make
+  host:
+    - zlib
+
+test:
+  commands:
+    - 'fulgor 2>&1 | grep -q "Usage: fulgor <tool> ..."'
+    - 'fulgor 2>&1 | grep -q "Tools:"'
+
+about:
+  home: "https://github.com/Francii-B/modified-Fulgor"
+  license: MIT
+  license_file: LICENSE
+  summary: "Modified prototype variant of Fulgor v2.0.0"
+  description: |
+    Prototype conda package for the modified-Fulgor repository.
+    This tracks the Fulgor v2.0.0-compatible modified branch, not the current
+    Bioconda fulgor 4.x line.

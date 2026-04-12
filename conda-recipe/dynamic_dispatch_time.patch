@@ -1,0 +1,7 @@
+--- a/external/ggcat/libs-crates/dynamic-dispatch-rs/Cargo.toml
++++ b/external/ggcat/libs-crates/dynamic-dispatch-rs/Cargo.toml
+@@ -11,3 +11,4 @@
+ 
+ [dependencies]
+ dynamic-dispatch-proc-macro = "0.5.0"
++time = "=0.3.37"
