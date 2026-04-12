@@ -26,7 +26,8 @@ requirements:
 
 test:
   commands:
-    - "fulgor help"
+    - 'fulgor 2>&1 | grep -q "Usage: fulgor <tool> ..."'
+    - 'fulgor 2>&1 | grep -q "Tools:"'
 
 about:
   home: "https://github.com/Francii-B/modified-Fulgor"
