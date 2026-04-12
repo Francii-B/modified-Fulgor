@@ -2,12 +2,11 @@
 set -euxo pipefail
 
 echo "Sanity check submodules"
-test -d external/ggcat
-test -d external/sshash
-
+test -d "${SRC_DIR}/external/ggcat"
+test -d "${SRC_DIR}/external/sshash"
 
 echo "Pin Rust time crate to avoid E0282 with newer rustc"
-cd external/ggcat/libs-crates/dynamic-dispatch-rs
+pushd "${SRC_DIR}/external/ggcat/libs-crates/dynamic-dispatch-rs"
 
 python - <<'PY'
 from pathlib import Path
@@ -21,21 +20,19 @@ p.write_text(s)
 PY
 
 cargo update --manifest-path Cargo.toml -p time --precise 0.3.37
-
-cd ../../crates/capi/ggcat-cpp-api
-make
+popd
 
 echo "Build GGCAT"
-(
-  cd external/ggcat/crates/capi/ggcat-cpp-api
-  make
-)
+pushd "${SRC_DIR}/external/ggcat/crates/capi/ggcat-cpp-api"
+make
+popd
 
 echo "Build modified-Fulgor"
-mkdir -p build
-cd build
+mkdir -p "${SRC_DIR}/build"
+pushd "${SRC_DIR}/build"
 cmake .. ${CMAKE_ARGS}
 make -j${CPU_COUNT}
+popd
 
 mkdir -p "${PREFIX}/bin"
-cp fulgor "${PREFIX}/bin/"
+cp "${SRC_DIR}/build/fulgor" "${PREFIX}/bin/"
